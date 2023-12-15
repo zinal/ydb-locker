@@ -6,7 +6,20 @@ package tech.ydb.locker;
  */
 public class App {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(App.class);
+
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        if (args.length != 1) {
+            System.err.println("USAGE: java -jar ydb-locker.jar connection-props.xml");
+            System.exit(1);
+        }
+        YdbConfig config = YdbConfig.fromFile(args[0]);
+        try (YdbConnector yc = new YdbConnector(config)) {
+            LOG.info("Connected!");
+        } catch(Exception ex) {
+            ex.printStackTrace(System.err);
+            System.exit(2);
+        }
     }
+
 }
