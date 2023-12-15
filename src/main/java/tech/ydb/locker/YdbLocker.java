@@ -98,7 +98,9 @@ public class YdbLocker {
                 }
             }
         }
-        response.getRemaining().removeAll(response.getLocked());
+        if (response.getRemaining() != null) {
+            response.getRemaining().removeAll(response.getLocked());
+        }
         return response;
     }
 

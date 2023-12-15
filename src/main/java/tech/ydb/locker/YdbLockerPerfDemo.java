@@ -25,7 +25,8 @@ public class YdbLockerPerfDemo {
                     new YdbLockItem("acc3", "acc4"),
                     new YdbLockItem("acc3", "acc4"),
                     new YdbLockItem("acc3", "acc1")));
-            new YdbLocker(yc).lock(req);
+            YdbLockResponse resp = new YdbLocker(yc).lock(req);
+            System.out.println("Locked: " + resp.getLocked() + ", remaining: " + resp.getRemaining());
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
             System.exit(2);
