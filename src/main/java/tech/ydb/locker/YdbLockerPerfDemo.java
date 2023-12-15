@@ -4,9 +4,9 @@ package tech.ydb.locker;
  *
  * @author mzinal
  */
-public class App {
+public class YdbLockerPerfDemo {
 
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(App.class);
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbLockerPerfDemo.class);
 
     public static void main(String[] args) {
         if (args.length != 1) {
