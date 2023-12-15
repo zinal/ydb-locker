@@ -24,6 +24,7 @@ public class YdbConnector implements AutoCloseable {
     private final TableClient tableClient;
     private final SessionRetryContext retryCtx;
     private final String database;
+    private final YdbConfig config;
 
     public YdbConnector(YdbConfig config) {
         GrpcTransportBuilder builder = GrpcTransport
@@ -72,6 +73,7 @@ public class YdbConnector implements AutoCloseable {
             if (tempTransport != null)
                 tempTransport.close();
         }
+        this.config = config;
     }
 
     public YdbConnector(Properties props) {
@@ -80,6 +82,10 @@ public class YdbConnector implements AutoCloseable {
 
     public YdbConnector(Properties props, String prefix) {
         this(new YdbConfig(props, prefix));
+    }
+
+    public YdbConfig getConfig() {
+        return config;
     }
 
     public TableClient getTableClient() {

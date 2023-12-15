@@ -16,6 +16,7 @@ public class YdbLockerPerfDemo {
         YdbConfig config = YdbConfig.fromFile(args[0]);
         try (YdbConnector yc = new YdbConnector(config)) {
             LOG.info("Connected!");
+            new YdbLocker(yc).lock(null);
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
             System.exit(2);

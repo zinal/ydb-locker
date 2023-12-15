@@ -9,7 +9,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <exec.mainClass>tech.ydb.locker.App</exec.mainClass>
+        <exec.mainClass>tech.ydb.locker.YdbLockerPerfDemo</exec.mainClass>
     </properties>
     <dependencies>
         <dependency>

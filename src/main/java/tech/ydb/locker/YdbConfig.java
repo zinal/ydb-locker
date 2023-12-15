@@ -19,8 +19,11 @@ public class YdbConfig {
     private String staticPassword;
     private String tlsCertificateFile;
     private int poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
+    private final String prefix;
+    private final Properties properties = new Properties();
 
     public YdbConfig() {
+        this.prefix = "ydb.";
     }
 
     public YdbConfig(Properties props) {
@@ -31,6 +34,7 @@ public class YdbConfig {
         if (prefix==null) {
             prefix = "ydb.";
         }
+        this.prefix = prefix;
         this.connectionString = props.getProperty(prefix + "url");
         this.authMode = YdbAuthMode.valueOf(props.getProperty(prefix + "auth.mode", "NONE"));
         this.saKeyFile = props.getProperty(prefix + "auth.sakey");
@@ -41,6 +45,7 @@ public class YdbConfig {
         if (spool!=null && spool.length() > 0) {
             poolSize = Integer.parseInt(spool);
         }
+        this.properties.putAll(props);
     }
 
     public static YdbConfig fromFile(String fname) {
@@ -61,6 +66,10 @@ public class YdbConfig {
             throw new RuntimeException("Failed to parse properties file " + fname, ix);
         }
         return new YdbConfig(props, prefix);
+    }
+
+    public String getPrefix() {
+        return prefix;
     }
 
     public String getConnectionString() {
@@ -123,6 +132,10 @@ public class YdbConfig {
             poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
         }
         this.poolSize = poolSize;
+    }
+
+    public Properties getProperties() {
+        return properties;
     }
 
     public static enum YdbAuthMode {
