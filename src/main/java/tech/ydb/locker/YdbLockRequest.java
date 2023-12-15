@@ -10,7 +10,7 @@ import java.util.List;
 public class YdbLockRequest implements Serializable {
 
     private YdbLockOwner owner;
-    private List<String> items;
+    private List<YdbLockItem> items;
 
     public YdbLockRequest() {
     }
@@ -19,7 +19,7 @@ public class YdbLockRequest implements Serializable {
         this.owner = owner;
     }
 
-    public YdbLockRequest(YdbLockOwner owner, List<String> items) {
+    public YdbLockRequest(YdbLockOwner owner, List<YdbLockItem> items) {
         this.owner = owner;
         this.items = items;
     }
@@ -32,11 +32,11 @@ public class YdbLockRequest implements Serializable {
         this.owner = owner;
     }
 
-    public List<String> getItems() {
+    public List<YdbLockItem> getItems() {
         return items;
     }
 
-    public void setItems(List<String> items) {
+    public void setItems(List<YdbLockItem> items) {
         this.items = items;
     }
 

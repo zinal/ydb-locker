@@ -1,6 +1,7 @@
 package tech.ydb.locker;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,6 +14,8 @@ public class YdbLockResponse implements Serializable {
     private List<String> remaining;
 
     public YdbLockResponse() {
+        this.locked = new ArrayList<>();
+        this.remaining = new ArrayList<>();
     }
 
     public YdbLockResponse(List<String> locked, List<String> remaining) {

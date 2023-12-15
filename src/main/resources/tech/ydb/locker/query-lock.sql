@@ -1,6 +1,6 @@
 DECLARE $h_type AS Utf8;
 DECLARE $h_instance AS Utf8;
-DECLARE $object_id AS List<Utf8>;
+DECLARE $object_ids AS List<Utf8>;
 
 SELECT ENSURE(1, h_type=$h_type AND h_instance=$h_instance,
               UNWRAP('LOCK_CONFLICT on '||h_type||':'||h_instance)) AS qq

@@ -75,7 +75,10 @@ public class YdbConnector implements AutoCloseable {
             this.tableClient = TableClient.newClient(tempTransport)
                     .sessionPoolSize(0, config.getPoolSize())
                     .build();
-            this.retryCtx = SessionRetryContext.create(tableClient).build();
+            this.retryCtx = SessionRetryContext
+                    .create(tableClient)
+                    .idempotent(true)
+                    .build();
             this.transport = tempTransport;
             tempTransport = null; // to avoid closing below
         } finally {

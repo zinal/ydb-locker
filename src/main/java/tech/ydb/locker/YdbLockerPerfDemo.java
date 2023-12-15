@@ -1,5 +1,7 @@
 package tech.ydb.locker;
 
+import java.util.Arrays;
+
 /**
  *
  * @author mzinal
@@ -16,7 +18,14 @@ public class YdbLockerPerfDemo {
         YdbConfig config = YdbConfig.fromFile(args[0]);
         try (YdbConnector yc = new YdbConnector(config)) {
             LOG.info("Connected!");
-            new YdbLocker(yc).lock(null);
+            YdbLockRequest req = new YdbLockRequest(new YdbLockOwner("aaa", "bbb"));
+            req.setItems(Arrays.asList(
+                    new YdbLockItem("acc1", "acc2"),
+                    new YdbLockItem("acc2", "acc1"),
+                    new YdbLockItem("acc3", "acc4"),
+                    new YdbLockItem("acc3", "acc4"),
+                    new YdbLockItem("acc3", "acc1")));
+            new YdbLocker(yc).lock(req);
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
             System.exit(2);
