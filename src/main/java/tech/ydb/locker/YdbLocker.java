@@ -1,10 +1,10 @@
 package tech.ydb.locker;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import tech.ydb.table.transaction.TxControl;
 
 /**
  *
@@ -15,7 +15,6 @@ public class YdbLocker {
     private final YdbConnector connector;
     private final String tableName;
 
-    private final String sqlCreate;
     private final String sqlLock;
     private final String sqlUnlock;
 
@@ -26,9 +25,9 @@ public class YdbLocker {
     public YdbLocker(YdbConnector connector, String tableName) {
         this.connector = connector;
         this.tableName = (tableName == null) ? "ydb_locker" : tableName;
-        sqlCreate = resource("query-table.sql");
-        sqlLock = resource("query-lock.sql");
-        sqlUnlock = resource("query-unlock.sql");
+        sqlLock = resource("query-lock.sql", this.tableName);
+        sqlUnlock = resource("query-unlock.sql", this.tableName);
+        ensureTableExists(connector, this.tableName);
     }
 
     public YdbLockResponse lock(YdbLockRequest req) {
@@ -39,16 +38,26 @@ public class YdbLocker {
 
     }
 
+    private static void ensureTableExists(YdbConnector connector, String tableName) {
+        String sqlSelect = "SELECT object_id FROM `" + tableName + "` ORDER BY object_id LIMIT 1";
+        boolean tableExists = connector.getRetryCtx().supplyResult(
+                session -> session.executeDataQuery(sqlSelect, TxControl.onlineRo()))
+                .join().isSuccess();
+        if (! tableExists) {
+            String sqlCreate = resource("query-table.sql", tableName);
+            connector.getRetryCtx().supplyStatus(
+                    session -> session.executeSchemeQuery(sqlCreate)).join().expectSuccess();
+        }
+    }
+
     private static String grabTableName(YdbConnector connector) {
         YdbConfig config = connector.getConfig();
         String prefix = config.getPrefix();
         return config.getProperties().getProperty(prefix + "locker.table");
     }
 
-    private static String resource(String name) {
-        String path = YdbLocker.class.getPackage().getName().replace('.', '/') + "/" + name;
-        try (InputStream is = Thread.currentThread().getContextClassLoader()
-                .getResourceAsStream(path)) {
+    private static String resource(String name, String tableName) {
+        try (InputStream is = YdbLocker.class.getResourceAsStream(name)) {
             if (is==null) {
                 throw new IOException("No such resource");
             }
@@ -58,7 +67,8 @@ public class YdbLocker {
             while ((bytes = is.read(buffer, 0, buffer.length)) != -1) {
                 baos.write(buffer, 0, bytes);
             }
-            return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+            String value = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+            return value.replace("{ydb_locker_table}", tableName);
         } catch (IOException ix) {
             throw new RuntimeException("Cannot load resource " + name, ix);
         }

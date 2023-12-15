@@ -26,6 +26,15 @@ public class YdbConnector implements AutoCloseable {
     private final String database;
     private final YdbConfig config;
 
+    public YdbConnector(GrpcTransport transport, TableClient tableClient,
+            SessionRetryContext retryCtx, String database) {
+        this.transport = transport;
+        this.tableClient = tableClient;
+        this.retryCtx = retryCtx;
+        this.database = database;
+        this.config = new YdbConfig();
+    }
+
     public YdbConnector(YdbConfig config) {
         GrpcTransportBuilder builder = GrpcTransport
                 .forConnectionString(config.getConnectionString());
