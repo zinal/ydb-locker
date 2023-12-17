@@ -28,15 +28,12 @@ public class YdbLockerPerfDemo implements Runnable {
     private static final AtomicLong LOCK_SUCCESSES = new AtomicLong(0L);
     private static final AtomicLong LOCK_FAILURES = new AtomicLong(0L);
 
-    private final YdbConnector yc;
     private final PessimisticLocker locker;
     private final int number;
     private final Random random;
 
-    public YdbLockerPerfDemo(YdbConnector yc, int number) {
-        this.yc = yc;
-        //this.locker = new YdbLocker(yc);
-        this.locker = new InMemoryLocker();
+    public YdbLockerPerfDemo(PessimisticLocker locker, int number) {
+        this.locker = locker;
         this.number = number;
         this.random = new Random();
     }
@@ -87,16 +84,18 @@ public class YdbLockerPerfDemo implements Runnable {
     }
 
     public static void main(String[] args) {
+        /*
         if (args.length != 1) {
             System.err.println("USAGE: java -jar ydb-locker.jar connection-props.xml");
             System.exit(1);
         }
         YdbConfig config = YdbConfig.fromFile(args[0]);
-        try (YdbConnector yc = new YdbConnector(config)) {
+        */
+        try (PessimisticLocker locker = new InMemoryLocker()) {
             System.out.println("Connected!");
             ArrayList<Thread> threads = new ArrayList<>(THREAD_COUNT);
             for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
-                Thread t = new Thread(new YdbLockerPerfDemo(yc, threadNum));
+                Thread t = new Thread(new YdbLockerPerfDemo(locker, threadNum));
                 t.setDaemon(true);
                 t.setName("locker-test-" + String.valueOf(threadNum));
                 threads.add(t);

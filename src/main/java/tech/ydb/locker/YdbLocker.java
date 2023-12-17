@@ -1,6 +1,7 @@
 package tech.ydb.locker;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +28,7 @@ import tech.ydb.table.values.PrimitiveValue;
  */
 public class YdbLocker implements PessimisticLocker {
 
+    private final boolean connectorOwner;
     private final YdbConnector connector;
     private final String tableName;
 
@@ -35,17 +37,33 @@ public class YdbLocker implements PessimisticLocker {
 
     private ListType typeListObjects;
 
-    public YdbLocker(YdbConnector connector) {
-        this(connector, grabTableName(connector));
+    public YdbLocker(YdbConfig config) {
+        this(new YdbConnector(config), grabTableName(config), true);
     }
 
-    public YdbLocker(YdbConnector connector, String tableName) {
+    public YdbLocker(YdbConfig config, String tableName) {
+        this(new YdbConnector(config), tableName, true);
+    }
+
+    public YdbLocker(YdbConnector connector, boolean connectorOwner) {
+        this(connector, grabTableName(connector), connectorOwner);
+    }
+
+    public YdbLocker(YdbConnector connector, String tableName, boolean connectorOwner) {
+        this.connectorOwner = connectorOwner;
         this.connector = connector;
         this.tableName = (tableName == null) ? "ydb_locker" : tableName;
         sqlLock = resource("query-lock.sql", this.tableName);
         sqlUnlock = resource("query-unlock.sql", this.tableName);
         typeListObjects = ListType.of(PrimitiveType.Text);
         ensureTableExists(connector, this.tableName);
+    }
+
+    @Override
+    public void close() {
+        if (connectorOwner) {
+            connector.close();
+        }
     }
 
     @Override
@@ -153,7 +171,10 @@ public class YdbLocker implements PessimisticLocker {
     }
 
     private static String grabTableName(YdbConnector connector) {
-        YdbConfig config = connector.getConfig();
+        return grabTableName(connector.getConfig());
+    }
+
+    private static String grabTableName(YdbConfig config) {
         String prefix = config.getPrefix();
         return config.getProperties().getProperty(prefix + "locker.table");
     }
