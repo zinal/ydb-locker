@@ -24,7 +24,7 @@ import tech.ydb.table.values.PrimitiveValue;
  *
  * @author mzinal
  */
-public class YdbLocker {
+public class YdbLocker implements PessimisticLocker {
 
     private final YdbConnector connector;
     private final String tableName;
@@ -47,6 +47,7 @@ public class YdbLocker {
         ensureTableExists(connector, this.tableName);
     }
 
+    @Override
     public YdbLockResponse lock(YdbLockRequest req) {
         if (req==null || req.getOwner()==null || req.getOwner().getTypeId()==null) {
             return null;
@@ -105,6 +106,7 @@ public class YdbLocker {
         return response;
     }
 
+    @Override
     public void unlock(YdbUnlockRequest req) {
         if (req==null || req.getOwner()==null || req.getOwner().getTypeId()==null) {
             return;

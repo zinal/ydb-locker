@@ -1,7 +1,6 @@
 package tech.ydb.locker;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -13,10 +12,10 @@ public class YdbLockerPerfDemo implements Runnable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbLockerPerfDemo.class);
 
-    private static final String[] ACCOUNTS = new String[10000];
+    private static final String[] ACCOUNTS = new String[100000];
     static {
         for (int i=0; i<ACCOUNTS.length; ++i) {
-            ACCOUNTS[i] = String.format("%10d%10d", i, 10000-i);
+            ACCOUNTS[i] = String.format("%09d%09d", i, ACCOUNTS.length - i);
         }
     }
 
@@ -24,9 +23,12 @@ public class YdbLockerPerfDemo implements Runnable {
     private static final int THREAD_COUNT = 100;
     private static final AtomicLong WAIT_TIME = new AtomicLong(0L);
     private static final AtomicLong TOTAL_TIME = new AtomicLong(0L);
+    private static final AtomicLong LOCK_REQUESTS = new AtomicLong(0L);
+    private static final AtomicLong LOCK_SUCCESSES = new AtomicLong(0L);
+    private static final AtomicLong LOCK_FAILURES = new AtomicLong(0L);
 
     private final YdbConnector yc;
-    private final YdbLocker locker;
+    private final PessimisticLocker locker;
     private final int number;
     private final Random random;
 
@@ -39,13 +41,13 @@ public class YdbLockerPerfDemo implements Runnable {
 
     @Override
     public void run() {
-        final long startWork = System.currentTimeMillis();
         final YdbLockOwner owner = new YdbLockOwner("perf-demo", String.valueOf(number));
         final YdbUnlockRequest unlockRequest = new YdbUnlockRequest(owner);
         locker.unlock(unlockRequest);
+        final long startWork = System.currentTimeMillis();
         for (int step = 0; step < THREAD_STEPS; ++step) {
             final YdbLockRequest request = new YdbLockRequest(owner);
-            final int itemCount = 100 + random.nextInt(401);
+            final int itemCount = 10 + random.nextInt(490);
             request.setItems(new ArrayList<>(itemCount));
             for (int itemNo = 0; itemNo < itemCount; ++itemNo) {
                 int posDt = selectAccount(-1);
@@ -54,10 +56,16 @@ public class YdbLockerPerfDemo implements Runnable {
                 String accountKt = ACCOUNTS[posKt];
                 request.getItems().add(new YdbLockItem(accountDt, accountKt));
             }
-            locker.lock(request);
+            YdbLockResponse response;
+            do {
+                response = locker.lock(request);
+                LOCK_SUCCESSES.addAndGet(response.getLocked().size());
+                LOCK_FAILURES.addAndGet(response.getRemaining().size());
+                LOCK_REQUESTS.addAndGet(1L);
+            } while (response.getLocked().isEmpty());
             final long startSleep = System.currentTimeMillis();
             try {
-                Thread.sleep(100L + random.nextInt(4900));
+                Thread.sleep(20L * itemCount);
             } catch(InterruptedException ix) {}
             WAIT_TIME.addAndGet(System.currentTimeMillis() - startSleep);
             locker.unlock(unlockRequest);
@@ -103,6 +111,9 @@ public class YdbLockerPerfDemo implements Runnable {
             long totalTime = TOTAL_TIME.get();
             long waitTime = WAIT_TIME.get();
             long lockTime = totalTime - waitTime;
+            long lockSuccesses = LOCK_SUCCESSES.get();
+            long lockFailures = LOCK_FAILURES.get();
+            long lockRequests = LOCK_REQUESTS.get();
             double lockPerThread = ((double)lockTime) / ((double)THREAD_COUNT);
             double lockPerStep = lockPerThread / ((double)THREAD_STEPS);
             System.out.println("Completed!");
@@ -111,6 +122,9 @@ public class YdbLockerPerfDemo implements Runnable {
             System.out.println("... lock time " + String.valueOf(lockTime));
             System.out.println("... lock time per thread " + String.valueOf(lockPerThread));
             System.out.println("... lock time per step " + String.valueOf(lockPerStep));
+            System.out.println("... total lock requests " + String.valueOf(lockRequests));
+            System.out.println("... total lock successes " + String.valueOf(lockSuccesses));
+            System.out.println("... total lock failures " + String.valueOf(lockFailures));
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
             System.exit(2);
