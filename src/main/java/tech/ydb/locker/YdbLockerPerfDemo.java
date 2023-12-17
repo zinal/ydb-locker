@@ -1,6 +1,7 @@
 package tech.ydb.locker;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -12,7 +13,7 @@ public class YdbLockerPerfDemo implements Runnable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbLockerPerfDemo.class);
 
-    private static final String[] ACCOUNTS = new String[100000];
+    private static final String[] ACCOUNTS = new String[50];
     static {
         for (int i=0; i<ACCOUNTS.length; ++i) {
             ACCOUNTS[i] = String.format("%09d%09d", i, ACCOUNTS.length - i);
@@ -43,23 +44,22 @@ public class YdbLockerPerfDemo implements Runnable {
     @Override
     public void run() {
         final YdbLockOwner owner = new YdbLockOwner("perf-demo", String.valueOf(number));
-        final YdbUnlockRequest unlockRequest = new YdbUnlockRequest(owner);
-        locker.unlock(unlockRequest);
+        final List<YdbLockItem> items = new ArrayList<>();
+        locker.unlock(owner);
         final long startWork = System.currentTimeMillis();
         for (int step = 0; step < THREAD_STEPS; ++step) {
-            final YdbLockRequest request = new YdbLockRequest(owner);
             final int itemCount = 10 + random.nextInt(490);
-            request.setItems(new ArrayList<>(itemCount));
+            items.clear();
             for (int itemNo = 0; itemNo < itemCount; ++itemNo) {
                 int posDt = selectAccount(-1);
                 int posKt = selectAccount(posDt);
                 String accountDt = ACCOUNTS[posDt];
                 String accountKt = ACCOUNTS[posKt];
-                request.getItems().add(new YdbLockItem(accountDt, accountKt));
+                items.add(new YdbLockItem(accountDt, accountKt));
             }
             YdbLockResponse response;
             do {
-                response = locker.lock(request);
+                response = locker.lock(owner, items);
                 LOCK_SUCCESSES.addAndGet(response.getLocked().size());
                 LOCK_FAILURES.addAndGet(response.getRemaining().size());
                 LOCK_REQUESTS.addAndGet(1L);
@@ -69,7 +69,7 @@ public class YdbLockerPerfDemo implements Runnable {
                 Thread.sleep(20L * itemCount);
             } catch(InterruptedException ix) {}
             WAIT_TIME.addAndGet(System.currentTimeMillis() - startSleep);
-            locker.unlock(unlockRequest);
+            locker.unlock(owner);
         }
         TOTAL_TIME.addAndGet(System.currentTimeMillis() - startWork);
     }

@@ -1,6 +1,7 @@
 package tech.ydb.locker;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -8,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
+ * A very straightforward and dumb in-memory pessimistic locks implementation.
  *
  * @author zinal
  */
@@ -17,25 +19,31 @@ public class InMemoryLocker implements PessimisticLocker {
     private final Map<YdbLockOwner, Set<Entry>> reverseMap = new HashMap<>();
 
     @Override
-    public YdbLockResponse lock(YdbLockRequest request) {
-        String typeId = request.getOwner().getTypeId();
-        String instanceId = request.getOwner().getInstanceId();
+    public YdbLockResponse lock(YdbLockOwner owner, Collection<YdbLockItem> items) {
+        if (owner==null || owner.getTypeId()==null) {
+            return null;
+        }
+        if (items==null || items.isEmpty())
+            return new YdbLockResponse();
+        String typeId = owner.getTypeId();
+        String instanceId = owner.getInstanceId();
         if (instanceId==null) {
             instanceId = "-";
         }
-        YdbLockOwner owner = new YdbLockOwner(typeId, instanceId);
+        owner = new YdbLockOwner(typeId, instanceId);
         YdbLockResponse response = new YdbLockResponse();
         synchronized(this) {
-            for ( YdbLockItem item : request.getItems() ) {
+            for ( YdbLockItem item : items ) {
                 int badPoints = 0;
                 for (String point : item.getPoints()) {
                     Entry e = forwardMap.get(point);
                     if (e != null && !(e.typeId.equals(typeId) && e.instanceId.equals(instanceId)) ) {
-                        response.getRemaining().add(point);
                         ++badPoints;
                     }
                 }
-                if (badPoints==0) {
+                if (badPoints > 0) {
+                    response.getRemaining().addAll(item.getPoints());
+                } else {
                     for (String point : item.getPoints()) {
                         final Entry e = new Entry(owner, point);
                         forwardMap.put(point, e);
@@ -56,13 +64,16 @@ public class InMemoryLocker implements PessimisticLocker {
     }
 
     @Override
-    public void unlock(YdbUnlockRequest request) {
-        String typeId = request.getOwner().getTypeId();
-        String instanceId = request.getOwner().getInstanceId();
+    public void unlock(YdbLockOwner owner) {
+        if (owner==null || owner.getTypeId()==null) {
+            return;
+        }
+        String typeId = owner.getTypeId();
+        String instanceId = owner.getInstanceId();
         if (instanceId==null) {
             instanceId = "-";
         }
-        YdbLockOwner owner = new YdbLockOwner(typeId, instanceId);
+        owner = new YdbLockOwner(typeId, instanceId);
         synchronized(this) {
             Set<Entry> entries = reverseMap.remove(owner);
             if (entries != null) {

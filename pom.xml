@@ -35,6 +35,13 @@
             <groupId>tech.ydb.auth</groupId>
             <artifactId>yc-auth-provider</artifactId>
         </dependency>
+        <!-- test infrastructure -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

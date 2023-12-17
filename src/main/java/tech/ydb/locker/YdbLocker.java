@@ -21,6 +21,7 @@ import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
 
 /**
+ * A very straightforward and dumb pessimistic locks implementation on top of YDB table.
  *
  * @author mzinal
  */
@@ -48,18 +49,18 @@ public class YdbLocker implements PessimisticLocker {
     }
 
     @Override
-    public YdbLockResponse lock(YdbLockRequest req) {
-        if (req==null || req.getOwner()==null || req.getOwner().getTypeId()==null) {
+    public YdbLockResponse lock(YdbLockOwner owner, Collection<YdbLockItem> items) {
+        if (owner==null || owner.getTypeId()==null) {
             return null;
         }
-        if (req.getItems()==null || req.getItems().isEmpty())
+        if (items==null || items.isEmpty())
             return new YdbLockResponse();
-        String typeId = req.getOwner().getTypeId();
-        String instanceId = req.getOwner().getInstanceId();
+        String typeId = owner.getTypeId();
+        String instanceId = owner.getInstanceId();
         if (instanceId==null) {
             instanceId = "-";
         }
-        List<YdbLockItem> lockItems = new ArrayList<>(new HashSet<>(req.getItems()));
+        List<YdbLockItem> lockItems = new ArrayList<>(new HashSet<>(items));
         List<CompletableFuture<Result<DataQueryResult>>> statements 
                 = new ArrayList<>(lockItems.size());
         for (YdbLockItem item : lockItems) {
@@ -107,12 +108,12 @@ public class YdbLocker implements PessimisticLocker {
     }
 
     @Override
-    public void unlock(YdbUnlockRequest req) {
-        if (req==null || req.getOwner()==null || req.getOwner().getTypeId()==null) {
+    public void unlock(YdbLockOwner owner) {
+        if (owner==null || owner.getTypeId()==null) {
             return;
         }
-        String typeId = req.getOwner().getTypeId();
-        String instanceId = req.getOwner().getInstanceId();
+        String typeId = owner.getTypeId();
+        String instanceId = owner.getInstanceId();
         if (instanceId==null) {
             instanceId = "-";
         }
