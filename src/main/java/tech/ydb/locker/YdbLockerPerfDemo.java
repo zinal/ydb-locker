@@ -34,7 +34,8 @@ public class YdbLockerPerfDemo implements Runnable {
 
     public YdbLockerPerfDemo(YdbConnector yc, int number) {
         this.yc = yc;
-        this.locker = new YdbLocker(yc);
+        //this.locker = new YdbLocker(yc);
+        this.locker = new InMemoryLocker();
         this.number = number;
         this.random = new Random();
     }
