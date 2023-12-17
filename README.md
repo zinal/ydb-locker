@@ -2,27 +2,27 @@
 Результаты для InMemory режима:
 
 ```
-... total time 3014696
-... work time 2982160
-... wait time 31662
-... lock time  2983034
-... lock time per thread 29830.34
-... lock time per step 2983.034
-... total lock requests 1059
-... total lock successes 57642
-... total lock failures 434753
+... total time 3078985
+... work time 3051762
+... wait time 26147
+... lock time 1076
+... lock time per thread 10.76
+... lock time per step 1.076
+... total lock requests 1051
+... total lock successes 59034
+... total lock failures 444719
 ```
 
 Результаты для YDB режима:
 
 ```
-... total time 6228606
-... work time 3397983
-... wait time 3911
-... lock time  6224695
-... lock time per thread 62246.95
-... lock time per step 6224.695
-... total lock requests 1006
-... total lock successes 65958
-... total lock failures 441400
+... total time 4626354
+... work time 3129247
+... wait time 16712
+... lock time 1480395
+... lock time per thread 14803.95
+... lock time per step 1480.395
+... total lock requests 1030
+... total lock successes 60582
+... total lock failures 439804
 ```

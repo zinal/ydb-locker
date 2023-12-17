@@ -95,15 +95,16 @@ public class YdbLockerPerfDemo implements Runnable {
     }
 
     public static void main(String[] args) {
+        /*
         if (args.length != 1) {
             System.err.println("USAGE: java -jar ydb-locker.jar connection-props.xml");
             System.exit(1);
         }
         YdbConfig config = YdbConfig.fromFile(args[0]);
-        /*
         PessimisticLocker locker = new InMemoryLocker()
+        PessimisticLocker locker = new YdbLocker(config)
         */
-        try (PessimisticLocker locker = new YdbLocker(config)) {
+        try (PessimisticLocker locker = new InMemoryLocker()) {
             System.out.println("Connected!");
             ArrayList<Thread> threads = new ArrayList<>(THREAD_COUNT);
             for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
