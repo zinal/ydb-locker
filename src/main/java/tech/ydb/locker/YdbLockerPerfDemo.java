@@ -20,8 +20,10 @@ public class YdbLockerPerfDemo implements Runnable {
         }
     }
 
-    private static AtomicLong WAIT_TIME = new AtomicLong(0L);
-    private static AtomicLong TOTAL_TIME = new AtomicLong(0L);
+    private static final int THREAD_STEPS = 10;
+    private static final int THREAD_COUNT = 100;
+    private static final AtomicLong WAIT_TIME = new AtomicLong(0L);
+    private static final AtomicLong TOTAL_TIME = new AtomicLong(0L);
 
     private final YdbConnector yc;
     private final YdbLocker locker;
@@ -41,8 +43,7 @@ public class YdbLockerPerfDemo implements Runnable {
         final YdbLockOwner owner = new YdbLockOwner("perf-demo", String.valueOf(number));
         final YdbUnlockRequest unlockRequest = new YdbUnlockRequest(owner);
         locker.unlock(unlockRequest);
-        System.out.println("Started thread #" + String.valueOf(number));
-        for (int step = 0; step < 100; ++step) {
+        for (int step = 0; step < THREAD_STEPS; ++step) {
             final YdbLockRequest request = new YdbLockRequest(owner);
             final int itemCount = 100 + random.nextInt(401);
             request.setItems(new ArrayList<>(itemCount));
@@ -84,30 +85,32 @@ public class YdbLockerPerfDemo implements Runnable {
         YdbConfig config = YdbConfig.fromFile(args[0]);
         try (YdbConnector yc = new YdbConnector(config)) {
             System.out.println("Connected!");
-            final int threadsTotal = 10;
-            ArrayList<Thread> threads = new ArrayList<>(threadsTotal);
-            for (int threadNum = 0; threadNum < threadsTotal; ++threadNum) {
+            ArrayList<Thread> threads = new ArrayList<>(THREAD_COUNT);
+            for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
                 Thread t = new Thread(new YdbLockerPerfDemo(yc, threadNum));
                 t.setDaemon(true);
                 t.setName("locker-test-" + String.valueOf(threadNum));
                 threads.add(t);
             }
             System.out.println("Threads created...");
-            for (int threadNum = 0; threadNum < threadsTotal; ++threadNum) {
+            for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
                 threads.get(threadNum).start();
             }
             System.out.println("Threads started, please stand by...");
-            for (int threadNum = 0; threadNum < threadsTotal; ++threadNum) {
+            for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
                 threads.get(threadNum).join();
             }
             long totalTime = TOTAL_TIME.get();
             long waitTime = WAIT_TIME.get();
             long lockTime = totalTime - waitTime;
-            double lockPerThread = ((double)lockTime) / ((double)threadsTotal);
-            System.out.println("Completed, total time " + String.valueOf(totalTime));
+            double lockPerThread = ((double)lockTime) / ((double)THREAD_COUNT);
+            double lockPerStep = lockPerThread / ((double)THREAD_STEPS);
+            System.out.println("Completed!");
+            System.out.println("... total time " + String.valueOf(totalTime));
             System.out.println("... wait time " + String.valueOf(waitTime));
             System.out.println("... lock time " + String.valueOf(lockTime));
             System.out.println("... lock time per thread " + String.valueOf(lockPerThread));
+            System.out.println("... lock time per step " + String.valueOf(lockPerStep));
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
             System.exit(2);
