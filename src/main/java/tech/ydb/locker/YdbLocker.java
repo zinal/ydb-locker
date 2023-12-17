@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
 import tech.ydb.core.Issue;
 import tech.ydb.core.Result;
 import tech.ydb.table.query.DataQueryResult;
@@ -113,6 +114,15 @@ public class YdbLocker {
         if (instanceId==null) {
             instanceId = "-";
         }
+
+        Params params = Params.of(
+            "$h_type", PrimitiveValue.newText(typeId),
+            "$h_instance", PrimitiveValue.newText(instanceId)
+        );
+        connector.getRetryCtx().supplyResult(
+                session -> session.executeDataQuery(sqlUnlock,
+                        TxControl.serializableRw().setCommitTx(true), params))
+                .join().getStatus().expectSuccess();
     }
 
     private static PrimitiveValue[] convert(Collection<String> lines) {
