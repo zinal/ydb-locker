@@ -13,7 +13,7 @@ public class YdbLockerPerfDemo implements Runnable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbLockerPerfDemo.class);
 
-    private static final String[] ACCOUNTS = new String[50];
+    private static final String[] ACCOUNTS = new String[10000];
     static {
         for (int i=0; i<ACCOUNTS.length; ++i) {
             ACCOUNTS[i] = String.format("%09d%09d", i, ACCOUNTS.length - i);
@@ -22,7 +22,8 @@ public class YdbLockerPerfDemo implements Runnable {
 
     private static final int THREAD_STEPS = 10;
     private static final int THREAD_COUNT = 100;
-    private static final AtomicLong WAIT_TIME = new AtomicLong(0L);
+    private static final AtomicLong SLEEP_TIME = new AtomicLong(0L);
+    private static final AtomicLong WORK_TIME = new AtomicLong(0L);
     private static final AtomicLong TOTAL_TIME = new AtomicLong(0L);
     private static final AtomicLong LOCK_REQUESTS = new AtomicLong(0L);
     private static final AtomicLong LOCK_SUCCESSES = new AtomicLong(0L);
@@ -43,7 +44,7 @@ public class YdbLockerPerfDemo implements Runnable {
         final YdbLockOwner owner = new YdbLockOwner("perf-demo", String.valueOf(number));
         final List<YdbLockItem> items = new ArrayList<>();
         locker.unlock(owner);
-        final long startWork = System.currentTimeMillis();
+        final long startFull = System.currentTimeMillis();
         for (int step = 0; step < THREAD_STEPS; ++step) {
             final int itemCount = 10 + random.nextInt(490);
             items.clear();
@@ -57,18 +58,28 @@ public class YdbLockerPerfDemo implements Runnable {
             YdbLockResponse response;
             do {
                 response = locker.lock(owner, items);
-                LOCK_SUCCESSES.addAndGet(response.getLocked().size());
                 LOCK_FAILURES.addAndGet(response.getRemaining().size());
                 LOCK_REQUESTS.addAndGet(1L);
+                if (response.getLocked().isEmpty()) {
+                    final long startSleep = System.currentTimeMillis();
+                    try {
+                        Thread.sleep(100L + random.nextInt(900));
+                    } catch(InterruptedException ix) {}
+                    SLEEP_TIME.addAndGet(System.currentTimeMillis() - startSleep);
+                }
             } while (response.getLocked().isEmpty());
-            final long startSleep = System.currentTimeMillis();
+
+            LOCK_SUCCESSES.addAndGet(response.getLocked().size());
+
+            final long startWork = System.currentTimeMillis();
             try {
-                Thread.sleep(20L * itemCount);
+                Thread.sleep(100L + 50L * response.getLocked().size());
             } catch(InterruptedException ix) {}
-            WAIT_TIME.addAndGet(System.currentTimeMillis() - startSleep);
+            WORK_TIME.addAndGet(System.currentTimeMillis() - startWork);
+
             locker.unlock(owner);
         }
-        TOTAL_TIME.addAndGet(System.currentTimeMillis() - startWork);
+        TOTAL_TIME.addAndGet(System.currentTimeMillis() - startFull);
     }
 
     private int selectAccount(int avoid) {
@@ -84,14 +95,15 @@ public class YdbLockerPerfDemo implements Runnable {
     }
 
     public static void main(String[] args) {
-        /*
         if (args.length != 1) {
             System.err.println("USAGE: java -jar ydb-locker.jar connection-props.xml");
             System.exit(1);
         }
         YdbConfig config = YdbConfig.fromFile(args[0]);
+        /*
+        PessimisticLocker locker = new InMemoryLocker()
         */
-        try (PessimisticLocker locker = new InMemoryLocker()) {
+        try (PessimisticLocker locker = new YdbLocker(config)) {
             System.out.println("Connected!");
             ArrayList<Thread> threads = new ArrayList<>(THREAD_COUNT);
             for (int threadNum = 0; threadNum < THREAD_COUNT; ++threadNum) {
@@ -109,8 +121,9 @@ public class YdbLockerPerfDemo implements Runnable {
                 threads.get(threadNum).join();
             }
             long totalTime = TOTAL_TIME.get();
-            long waitTime = WAIT_TIME.get();
-            long lockTime = totalTime - waitTime;
+            long waitTime = SLEEP_TIME.get();
+            long workTime = WORK_TIME.get();
+            long lockTime = totalTime - (waitTime + workTime);
             long lockSuccesses = LOCK_SUCCESSES.get();
             long lockFailures = LOCK_FAILURES.get();
             long lockRequests = LOCK_REQUESTS.get();
@@ -118,6 +131,7 @@ public class YdbLockerPerfDemo implements Runnable {
             double lockPerStep = lockPerThread / ((double)THREAD_STEPS);
             System.out.println("Completed!");
             System.out.println("... total time " + String.valueOf(totalTime));
+            System.out.println("... work time " + String.valueOf(workTime));
             System.out.println("... wait time " + String.valueOf(waitTime));
             System.out.println("... lock time " + String.valueOf(lockTime));
             System.out.println("... lock time per thread " + String.valueOf(lockPerThread));
