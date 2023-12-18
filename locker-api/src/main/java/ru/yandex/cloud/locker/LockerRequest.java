@@ -34,20 +34,36 @@ public class LockerRequest implements Serializable {
     public String toJson() {
         final StringBuilder sb = new StringBuilder();
         sb.append("{");
+        boolean comma0 = false;
         if (owner != null) {
             sb.append("\"owner\": ");
             sb.append("{");
             sb.append("\"typeId\": ");
-            sb.append("\"").append(owner.getTypeId()).append("\",");
+            sb.append("\"").append(safe(owner.getTypeId())).append("\", ");
             sb.append("\"instanceId\": ");
-            sb.append("\"").append(owner.getInstanceId()).append("\",");
+            sb.append("\"").append(safe(owner.getInstanceId())).append("\"");
             sb.append("}");
+            comma0 = true;
         }
         if (items!=null) {
+            if (comma0) sb.append(", "); else comma0 = true;
             sb.append("\"items\": ");
             sb.append("[");
+            boolean comma1 = false;
             for (LockerItem item : items) {
-                
+                if (comma1) sb.append(", "); else comma1 = true;
+                sb.append("{");
+                if (item.getPoints() != null) {
+                    sb.append("\"points\": ");
+                    sb.append("[");
+                    boolean comma2 = false;
+                    for (String point : item.getPoints()) {
+                        if (comma2) sb.append(", "); else comma2 = true;
+                        sb.append("\"").append(safe(point)).append("\"");
+                    }
+                    sb.append("]");
+                }
+                sb.append("}");
             }
             sb.append("]");
         }
