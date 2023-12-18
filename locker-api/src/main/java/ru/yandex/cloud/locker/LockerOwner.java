@@ -10,8 +10,8 @@ import org.apache.commons.text.StringEscapeUtils;
  */
 public class LockerOwner implements Serializable {
 
-    protected final String typeId;
-    protected final String instanceId;
+    protected String typeId;
+    protected String instanceId;
 
     public LockerOwner() {
         this.typeId = "-";
@@ -37,8 +37,16 @@ public class LockerOwner implements Serializable {
         return typeId;
     }
 
+    public void setTypeId(String typeId) {
+        this.typeId = typeId;
+    }
+
     public String getInstanceId() {
         return instanceId;
+    }
+
+    public void setInstanceId(String instanceId) {
+        this.instanceId = instanceId;
     }
 
     public String toJson() {

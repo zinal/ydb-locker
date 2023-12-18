@@ -14,6 +14,9 @@ public class LockerItem implements Serializable {
 
     private final Set<String> points = new TreeSet<>();
 
+    public LockerItem() {
+    }
+
     public LockerItem(String point) {
         points.add(point);
     }

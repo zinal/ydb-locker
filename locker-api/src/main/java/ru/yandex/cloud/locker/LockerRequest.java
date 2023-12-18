@@ -11,8 +11,11 @@ import org.apache.commons.text.StringEscapeUtils;
  */
 public class LockerRequest implements Serializable {
 
-    private final LockerOwner owner;
-    private final List<LockerItem> items;
+    private LockerOwner owner;
+    private List<LockerItem> items;
+
+    public LockerRequest() {
+    }
 
     public LockerRequest(LockerOwner owner, List<LockerItem> items) {
         this.owner = owner;
@@ -27,8 +30,16 @@ public class LockerRequest implements Serializable {
         return owner;
     }
 
+    public void setOwner(LockerOwner owner) {
+        this.owner = owner;
+    }
+
     public List<LockerItem> getItems() {
         return items;
+    }
+
+    public void setItems(List<LockerItem> items) {
+        this.items = items;
     }
 
     public String toJson() {
