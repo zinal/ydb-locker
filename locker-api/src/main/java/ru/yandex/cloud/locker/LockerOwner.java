@@ -2,6 +2,7 @@ package ru.yandex.cloud.locker;
 
 import java.io.Serializable;
 import java.util.Objects;
+import org.apache.commons.text.StringEscapeUtils;
 
 /**
  *
@@ -38,6 +39,21 @@ public class LockerOwner implements Serializable {
 
     public String getInstanceId() {
         return instanceId;
+    }
+
+    public String toJson() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        sb.append("\"typeId\": ");
+        sb.append("\"").append(safe(typeId)).append("\", ");
+        sb.append("\"instanceId\": ");
+        sb.append("\"").append(safe(instanceId)).append("\"");
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static String safe(String v) {
+        return StringEscapeUtils.escapeJson(v);
     }
 
     @Override
