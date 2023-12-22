@@ -37,11 +37,11 @@ public class YdbLocker implements PessimisticLocker {
 
     private ListType typeListObjects;
 
-    public YdbLocker(YdbConfig config) {
+    public YdbLocker(YdbConnector.Config config) {
         this(new YdbConnector(config), grabTableName(config), true);
     }
 
-    public YdbLocker(YdbConfig config, String tableName) {
+    public YdbLocker(YdbConnector.Config config, String tableName) {
         this(new YdbConnector(config), tableName, true);
     }
 
@@ -174,7 +174,7 @@ public class YdbLocker implements PessimisticLocker {
         return grabTableName(connector.getConfig());
     }
 
-    private static String grabTableName(YdbConfig config) {
+    private static String grabTableName(YdbConnector.Config config) {
         String prefix = config.getPrefix();
         return config.getProperties().getProperty(prefix + "locker.table");
     }

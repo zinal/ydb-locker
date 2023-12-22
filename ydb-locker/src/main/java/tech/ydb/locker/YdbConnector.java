@@ -1,5 +1,6 @@
 package tech.ydb.locker;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -24,18 +25,9 @@ public class YdbConnector implements AutoCloseable {
     private final TableClient tableClient;
     private final SessionRetryContext retryCtx;
     private final String database;
-    private final YdbConfig config;
+    private final Config config;
 
-    public YdbConnector(GrpcTransport transport, TableClient tableClient,
-            SessionRetryContext retryCtx, String database) {
-        this.transport = transport;
-        this.tableClient = tableClient;
-        this.retryCtx = retryCtx;
-        this.database = database;
-        this.config = new YdbConfig();
-    }
-
-    public YdbConnector(YdbConfig config) {
+    public YdbConnector(Config config) {
         GrpcTransportBuilder builder = GrpcTransport
                 .forConnectionString(config.getConnectionString());
         switch (config.getAuthMode()) {
@@ -45,7 +37,7 @@ public class YdbConnector implements AutoCloseable {
                 break;
             case STATIC:
                 builder = builder.withAuthProvider(
-                    new StaticCredentials(config.getStaticLogin(), config.getStaticPassword()));
+                        new StaticCredentials(config.getStaticLogin(), config.getStaticPassword()));
                 break;
             case METADATA:
                 builder = builder.withAuthProvider(
@@ -63,12 +55,12 @@ public class YdbConnector implements AutoCloseable {
             byte[] cert;
             try {
                 cert = Files.readAllBytes(Paths.get(tlsCertFile));
-            } catch(IOException ix) {
+            } catch (IOException ix) {
                 throw new RuntimeException("Failed to read file " + tlsCertFile, ix);
             }
             builder.withSecureConnection(cert);
         }
-        
+
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
@@ -82,21 +74,22 @@ public class YdbConnector implements AutoCloseable {
             this.transport = tempTransport;
             tempTransport = null; // to avoid closing below
         } finally {
-            if (tempTransport != null)
+            if (tempTransport != null) {
                 tempTransport.close();
+            }
         }
         this.config = config;
     }
 
     public YdbConnector(Properties props) {
-        this(new YdbConfig(props));
+        this(new Config(props));
     }
 
     public YdbConnector(Properties props, String prefix) {
-        this(new YdbConfig(props, prefix));
+        this(new Config(props, prefix));
     }
 
-    public YdbConfig getConfig() {
+    public Config getConfig() {
         return config;
     }
 
@@ -117,17 +110,156 @@ public class YdbConnector implements AutoCloseable {
         if (tableClient != null) {
             try {
                 tableClient.close();
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 LOG.warn("TableClient closing threw an exception", ex);
             }
         }
         if (transport != null) {
             try {
                 transport.close();
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 LOG.warn("GrpcTransport closing threw an exception", ex);
             }
         }
     }
 
+    public static final class Config {
+
+        private String connectionString;
+        private AuthMode authMode = AuthMode.NONE;
+        private String saKeyFile;
+        private String staticLogin;
+        private String staticPassword;
+        private String tlsCertificateFile;
+        private int poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
+        private final String prefix;
+        private final Properties properties = new Properties();
+
+        public Config() {
+            this.prefix = "ydb.";
+        }
+
+        public Config(Properties props) {
+            this(props, null);
+        }
+
+        public Config(Properties props, String prefix) {
+            if (prefix == null) {
+                prefix = "ydb.";
+            }
+            this.prefix = prefix;
+            this.connectionString = props.getProperty(prefix + "url");
+            this.authMode = AuthMode.valueOf(props.getProperty(prefix + "auth.mode", "NONE"));
+            this.saKeyFile = props.getProperty(prefix + "auth.sakey");
+            this.staticLogin = props.getProperty(prefix + "auth.username");
+            this.staticPassword = props.getProperty(prefix + "auth.password");
+            this.tlsCertificateFile = props.getProperty(prefix + "cafile");
+            String spool = props.getProperty(prefix + "poolSize");
+            if (spool != null && spool.length() > 0) {
+                poolSize = Integer.parseInt(spool);
+            }
+            this.properties.putAll(props);
+        }
+
+        public static Config fromFile(String fname) {
+            return fromFile(fname, null);
+        }
+
+        public static Config fromFile(String fname, String prefix) {
+            byte[] data;
+            try {
+                data = Files.readAllBytes(Paths.get(fname));
+            } catch (IOException ix) {
+                throw new RuntimeException("Failed to read file " + fname, ix);
+            }
+            Properties props = new Properties();
+            try {
+                props.loadFromXML(new ByteArrayInputStream(data));
+            } catch (IOException ix) {
+                throw new RuntimeException("Failed to parse properties file " + fname, ix);
+            }
+            return new Config(props, prefix);
+        }
+
+        public String getPrefix() {
+            return prefix;
+        }
+
+        public String getConnectionString() {
+            return connectionString;
+        }
+
+        public void setConnectionString(String connectionString) {
+            this.connectionString = connectionString;
+        }
+
+        public AuthMode getAuthMode() {
+            return authMode;
+        }
+
+        public void setAuthMode(AuthMode authMode) {
+            if (authMode == null) {
+                authMode = AuthMode.NONE;
+            }
+            this.authMode = authMode;
+        }
+
+        public String getSaKeyFile() {
+            return saKeyFile;
+        }
+
+        public void setSaKeyFile(String saKeyFile) {
+            this.saKeyFile = saKeyFile;
+        }
+
+        public String getStaticLogin() {
+            return staticLogin;
+        }
+
+        public void setStaticLogin(String staticLogin) {
+            this.staticLogin = staticLogin;
+        }
+
+        public String getStaticPassword() {
+            return staticPassword;
+        }
+
+        public void setStaticPassword(String staticPassword) {
+            this.staticPassword = staticPassword;
+        }
+
+        public String getTlsCertificateFile() {
+            return tlsCertificateFile;
+        }
+
+        public void setTlsCertificateFile(String tlsCertificateFile) {
+            this.tlsCertificateFile = tlsCertificateFile;
+        }
+
+        public int getPoolSize() {
+            return poolSize;
+        }
+
+        public void setPoolSize(int poolSize) {
+            if (poolSize <= 0) {
+                poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
+            }
+            this.poolSize = poolSize;
+        }
+
+        public Properties getProperties() {
+            return properties;
+        }
+
+    }
+
+    public static enum AuthMode {
+
+        NONE,
+        ENV,
+        STATIC,
+        METADATA,
+        SAKEY
+
+    }
 }
